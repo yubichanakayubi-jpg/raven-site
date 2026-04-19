@@ -1,7 +1,9 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { createServerFn, useServerFn } from "@tanstack/react-start";
+import { getRequestHeader } from "@tanstack/react-start/server";
 import { env } from "cloudflare:workers";
 import logo from "@/assets/raven-logo.png";
+import { getDiscordSessionFromRequest } from "@/lib/auth";
 
 type TagPendente = {
   registro_id: string;
@@ -14,7 +16,25 @@ type TagPendente = {
   status?: string;
 };
 
+type Viewer = {
+  id: string;
+  username: string;
+  global_name?: string | null;
+  avatar?: string | null;
+} | null;
+
+const getViewer = createServerFn({ method: "GET" }).handler(async () => {
+  getRequestHeader("cookie");
+  return getDiscordSessionFromRequest();
+});
+
 const getTagsPendentes = createServerFn({ method: "GET" }).handler(async () => {
+  const viewer = getDiscordSessionFromRequest();
+
+  if (!viewer) {
+    return [];
+  }
+
   try {
     const resultado = await env.DB.prepare(
       `
@@ -38,7 +58,7 @@ const getTagsPendentes = createServerFn({ method: "GET" }).handler(async () => {
       status: string;
     }>();
 
-    const pendentes = (resultado.results ?? []).map((registro) => ({
+    return (resultado.results ?? []).map((registro) => ({
       registro_id: String(registro.user_id),
       user_id: String(registro.user_id),
       nome: registro.nome,
@@ -48,11 +68,8 @@ const getTagsPendentes = createServerFn({ method: "GET" }).handler(async () => {
       avisou_10_dias: Boolean(registro.avisou_10_dias),
       status: registro.status,
     }));
-
-    return pendentes.sort((a, b) => {
-      return new Date(a.data_envio).getTime() - new Date(b.data_envio).getTime();
-    });
-  } catch {
+  } catch (error) {
+    console.error("Erro ao buscar tags no D1:", error);
     return [];
   }
 });
@@ -60,6 +77,12 @@ const getTagsPendentes = createServerFn({ method: "GET" }).handler(async () => {
 const concluirTagPendente = createServerFn({ method: "POST" })
   .inputValidator((data: { registroId: string }) => data)
   .handler(async ({ data }) => {
+    const viewer = getDiscordSessionFromRequest();
+
+    if (!viewer) {
+      return { ok: false };
+    }
+
     try {
       await env.DB.prepare(
         `
@@ -71,13 +94,22 @@ const concluirTagPendente = createServerFn({ method: "POST" })
         .run();
 
       return { ok: true };
-    } catch {
+    } catch (error) {
+      console.error("Erro ao concluir tag no D1:", error);
       return { ok: false };
     }
   });
 
 export const Route = createFileRoute("/dashboard")({
-  loader: () => getTagsPendentes(),
+  loader: async () => {
+    const viewer = (await getViewer()) as Viewer;
+    const pendentes = viewer ? await getTagsPendentes() : [];
+
+    return {
+      viewer,
+      pendentes,
+    };
+  },
   component: DashboardPage,
 });
 
@@ -107,7 +139,7 @@ function formatarDataBr(dataIso: string) {
 }
 
 function DashboardPage() {
-  const pendentes = Route.useLoaderData();
+  const { viewer, pendentes } = Route.useLoaderData();
   const router = useRouter();
   const concluirTag = useServerFn(concluirTagPendente);
 
@@ -130,6 +162,24 @@ function DashboardPage() {
               <p className="text-xs text-muted-foreground">Dashboard</p>
             </div>
           </div>
+
+          <div className="flex items-center gap-2">
+            <a
+              href="/"
+              className="rounded-xl border border-[var(--raven-cyan)]/30 px-4 py-2 text-sm font-medium text-[var(--raven-cyan)] transition-all hover:bg-[var(--raven-cyan)] hover:text-[var(--raven-black)]"
+            >
+              Inicio
+            </a>
+
+            {viewer ? (
+              <a
+                href="/auth/logout"
+                className="rounded-xl border border-white/15 px-4 py-2 text-sm font-medium text-muted-foreground transition-all hover:border-white/30 hover:text-white"
+              >
+                Sair
+              </a>
+            ) : null}
+          </div>
         </div>
       </header>
 
@@ -144,8 +194,21 @@ function DashboardPage() {
           </h1>
 
           <p className="mt-4 max-w-2xl text-base text-muted-foreground md:text-lg">
-            Aqui vamos mostrar e controlar as funcoes do bot com o mesmo visual do site.
+            {viewer
+              ? `Logado como ${viewer.global_name || viewer.username}.`
+              : "Entre com seu Discord para acessar sua dashboard."}
           </p>
+
+          {!viewer ? (
+            <div className="mt-6">
+              <a
+                href="/auth/discord"
+                className="inline-flex rounded-xl bg-[var(--gradient-cyan)] px-5 py-3 text-sm font-semibold text-[var(--raven-black)] transition-all hover:shadow-[var(--glow-cyan-strong)]"
+              >
+                Entrar com Discord
+              </a>
+            </div>
+          ) : null}
         </div>
 
         <div className="mt-8 rounded-3xl border-glow bg-[oklch(0.12_0.03_250/60%)] p-8 backdrop-blur-xl">
@@ -163,13 +226,17 @@ function DashboardPage() {
           </div>
 
           <div className="mt-6 rounded-2xl border border-white/10 bg-black/20 p-6">
-            {pendentes.length === 0 ? (
+            {!viewer ? (
+              <p className="text-sm text-muted-foreground">
+                Faça login com Discord para visualizar e editar a lista.
+              </p>
+            ) : pendentes.length === 0 ? (
               <p className="text-sm text-muted-foreground">
                 Nao ha pendentes no momento.
               </p>
             ) : (
               <div className="space-y-4">
-                {pendentes.map((registro) => (
+                {pendentes.map((registro: TagPendente) => (
                   <div
                     key={registro.registro_id}
                     className="rounded-2xl border border-white/10 bg-white/5 p-4"

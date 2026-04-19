@@ -11,6 +11,9 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthLogoutRouteImport } from './routes/auth/logout'
+import { Route as AuthDiscordRouteImport } from './routes/auth/discord'
+import { Route as AuthDiscordCallbackRouteImport } from './routes/auth/discord/callback'
 
 const DashboardRoute = DashboardRouteImport.update({
   id: '/dashboard',
@@ -22,31 +25,73 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthLogoutRoute = AuthLogoutRouteImport.update({
+  id: '/auth/logout',
+  path: '/auth/logout',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthDiscordRoute = AuthDiscordRouteImport.update({
+  id: '/auth/discord',
+  path: '/auth/discord',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthDiscordCallbackRoute = AuthDiscordCallbackRouteImport.update({
+  id: '/callback',
+  path: '/callback',
+  getParentRoute: () => AuthDiscordRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
+  '/auth/discord': typeof AuthDiscordRouteWithChildren
+  '/auth/logout': typeof AuthLogoutRoute
+  '/auth/discord/callback': typeof AuthDiscordCallbackRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
+  '/auth/discord': typeof AuthDiscordRouteWithChildren
+  '/auth/logout': typeof AuthLogoutRoute
+  '/auth/discord/callback': typeof AuthDiscordCallbackRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
+  '/auth/discord': typeof AuthDiscordRouteWithChildren
+  '/auth/logout': typeof AuthLogoutRoute
+  '/auth/discord/callback': typeof AuthDiscordCallbackRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/dashboard'
+  fullPaths:
+    | '/'
+    | '/dashboard'
+    | '/auth/discord'
+    | '/auth/logout'
+    | '/auth/discord/callback'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/dashboard'
-  id: '__root__' | '/' | '/dashboard'
+  to:
+    | '/'
+    | '/dashboard'
+    | '/auth/discord'
+    | '/auth/logout'
+    | '/auth/discord/callback'
+  id:
+    | '__root__'
+    | '/'
+    | '/dashboard'
+    | '/auth/discord'
+    | '/auth/logout'
+    | '/auth/discord/callback'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DashboardRoute: typeof DashboardRoute
+  AuthDiscordRoute: typeof AuthDiscordRouteWithChildren
+  AuthLogoutRoute: typeof AuthLogoutRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -65,12 +110,47 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/auth/logout': {
+      id: '/auth/logout'
+      path: '/auth/logout'
+      fullPath: '/auth/logout'
+      preLoaderRoute: typeof AuthLogoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth/discord': {
+      id: '/auth/discord'
+      path: '/auth/discord'
+      fullPath: '/auth/discord'
+      preLoaderRoute: typeof AuthDiscordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth/discord/callback': {
+      id: '/auth/discord/callback'
+      path: '/callback'
+      fullPath: '/auth/discord/callback'
+      preLoaderRoute: typeof AuthDiscordCallbackRouteImport
+      parentRoute: typeof AuthDiscordRoute
+    }
   }
 }
+
+interface AuthDiscordRouteChildren {
+  AuthDiscordCallbackRoute: typeof AuthDiscordCallbackRoute
+}
+
+const AuthDiscordRouteChildren: AuthDiscordRouteChildren = {
+  AuthDiscordCallbackRoute: AuthDiscordCallbackRoute,
+}
+
+const AuthDiscordRouteWithChildren = AuthDiscordRoute._addFileChildren(
+  AuthDiscordRouteChildren,
+)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DashboardRoute: DashboardRoute,
+  AuthDiscordRoute: AuthDiscordRouteWithChildren,
+  AuthLogoutRoute: AuthLogoutRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
