@@ -1,5 +1,6 @@
-﻿import { createFileRoute, useRouter } from "@tanstack/react-router";
+import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { createServerFn, useServerFn } from "@tanstack/react-start";
+import { env } from "cloudflare:workers";
 import logo from "@/assets/raven-logo.png";
 
 type TagPendente = {
@@ -14,19 +15,39 @@ type TagPendente = {
 };
 
 const getTagsPendentes = createServerFn({ method: "GET" }).handler(async () => {
-  const fs = await import("node:fs/promises");
-
   try {
-    const conteudo = await fs.readFile("C:\\bot-fdn\\dados_tags.json", "utf-8");
-    const dados = JSON.parse(conteudo);
-    const pendentes = Object.entries((dados?.pendentes ?? {}) as Record<string, Omit<TagPendente, "registro_id">>).map(
-      ([registroId, valor]) => ({
-        ...valor,
-        registro_id: registroId,
-        user_id: String(valor.user_id),
-        message_id: valor.message_id ? String(valor.message_id) : null,
-      }),
-    );
+    const resultado = await env.DB.prepare(
+      `
+        SELECT
+          user_id,
+          nome,
+          data_envio,
+          avisou_7_dias,
+          avisou_10_dias,
+          status
+        FROM tags_pendentes
+        WHERE status = 'pendente'
+        ORDER BY data_envio ASC
+      `,
+    ).all<{
+      user_id: string;
+      nome: string;
+      data_envio: string;
+      avisou_7_dias: number;
+      avisou_10_dias: number;
+      status: string;
+    }>();
+
+    const pendentes = (resultado.results ?? []).map((registro) => ({
+      registro_id: String(registro.user_id),
+      user_id: String(registro.user_id),
+      nome: registro.nome,
+      data_envio: registro.data_envio,
+      message_id: null,
+      avisou_7_dias: Boolean(registro.avisou_7_dias),
+      avisou_10_dias: Boolean(registro.avisou_10_dias),
+      status: registro.status,
+    }));
 
     return pendentes.sort((a, b) => {
       return new Date(a.data_envio).getTime() - new Date(b.data_envio).getTime();
@@ -39,27 +60,15 @@ const getTagsPendentes = createServerFn({ method: "GET" }).handler(async () => {
 const concluirTagPendente = createServerFn({ method: "POST" })
   .inputValidator((data: { registroId: string }) => data)
   .handler(async ({ data }) => {
-    const fs = await import("node:fs/promises");
-    const caminho = "C:\\bot-fdn\\dados_tags.json";
-
     try {
-      const conteudo = await fs.readFile(caminho, "utf-8");
-      const dados = JSON.parse(conteudo);
-      const pendentes = (dados?.pendentes ?? {}) as Record<string, TagPendente>;
-      delete pendentes[data.registroId];
-
-      await fs.writeFile(
-        caminho,
-        JSON.stringify(
-          {
-            ...dados,
-            pendentes,
-          },
-          null,
-          2,
-        ),
-        "utf-8",
-      );
+      await env.DB.prepare(
+        `
+          DELETE FROM tags_pendentes
+          WHERE user_id = ?
+        `,
+      )
+        .bind(data.registroId)
+        .run();
 
       return { ok: true };
     } catch {
@@ -88,7 +97,7 @@ function formatarDataBr(dataIso: string) {
   const data = new Date(dataIso);
 
   if (Number.isNaN(data.getTime())) {
-    return "data inválida";
+    return "data invalida";
   }
 
   return new Intl.DateTimeFormat("pt-BR", {
@@ -135,7 +144,7 @@ function DashboardPage() {
           </h1>
 
           <p className="mt-4 max-w-2xl text-base text-muted-foreground md:text-lg">
-            Aqui vamos mostrar e controlar as funções do bot com o mesmo visual do site.
+            Aqui vamos mostrar e controlar as funcoes do bot com o mesmo visual do site.
           </p>
         </div>
 
@@ -156,7 +165,7 @@ function DashboardPage() {
           <div className="mt-6 rounded-2xl border border-white/10 bg-black/20 p-6">
             {pendentes.length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                Não há pendentes no momento.
+                Nao ha pendentes no momento.
               </p>
             ) : (
               <div className="space-y-4">
