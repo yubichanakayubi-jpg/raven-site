@@ -5,6 +5,8 @@ import { env } from "cloudflare:workers";
 import logo from "@/assets/raven-logo.png";
 import { getDiscordSessionFromRequest } from "@/lib/auth";
 
+const DISCORD_OWNER_ID = "1273671698255839315";
+
 type TagPendente = {
   registro_id: string;
   user_id: string;
@@ -107,10 +109,12 @@ export const Route = createFileRoute("/dashboard")({
   }),
   loader: async () => {
     const viewer = (await getViewer()) as Viewer;
-    const pendentes = viewer ? await getTagsPendentes() : [];
+    const acessoPermitido = viewer?.id === DISCORD_OWNER_ID;
+    const pendentes = acessoPermitido ? await getTagsPendentes() : [];
 
     return {
       viewer,
+      acessoPermitido,
       pendentes,
     };
   },
@@ -143,7 +147,7 @@ function formatarDataBr(dataIso: string) {
 }
 
 function DashboardPage() {
-  const { viewer, pendentes } = Route.useLoaderData();
+  const { viewer, acessoPermitido, pendentes } = Route.useLoaderData();
   const { auth_error } = Route.useSearch();
   const router = useRouter();
   const concluirTag = useServerFn(concluirTagPendente);
@@ -198,10 +202,19 @@ function DashboardPage() {
             Dashboard <span className="text-[var(--raven-cyan)]">Raven</span>
           </h1>
 
-          {viewer ? (
+          {viewer && acessoPermitido ? (
             <p className="mt-4 max-w-2xl text-base text-muted-foreground md:text-lg">
               Logado como {viewer.global_name || viewer.username}.
             </p>
+          ) : viewer && !acessoPermitido ? (
+            <div className="mt-6 max-w-3xl rounded-2xl border border-red-400/30 bg-red-500/10 p-6">
+              <p className="text-lg font-semibold text-white">
+                Esta conta do Discord nao tem permissao para acessar esta dashboard.
+              </p>
+              <p className="mt-2 text-sm text-red-200/80">
+                Faca login com a conta autorizada para continuar.
+              </p>
+            </div>
           ) : (
             <div className="mt-6 max-w-3xl rounded-2xl border border-cyan-400/30 bg-cyan-400/10 p-6">
               {auth_error ? (
@@ -247,6 +260,10 @@ function DashboardPage() {
             {!viewer ? (
               <p className="text-sm text-muted-foreground">
                 Faca login com Discord para visualizar e editar a lista.
+              </p>
+            ) : !acessoPermitido ? (
+              <p className="text-sm text-muted-foreground">
+                Esta conta nao pode visualizar a lista.
               </p>
             ) : pendentes.length === 0 ? (
               <p className="text-sm text-muted-foreground">
