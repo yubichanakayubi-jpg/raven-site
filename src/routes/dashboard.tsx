@@ -102,6 +102,42 @@ const concluirTagPendente = createServerFn({ method: "POST" })
     }
   });
 
+const adicionarTagPendente = createServerFn({ method: "POST" })
+  .inputValidator((data: { userId: string; nome: string; dataEnvio?: string }) => data)
+  .handler(async ({ data }) => {
+    const viewer = getDiscordSessionFromRequest();
+
+    if (!viewer || viewer.id !== DISCORD_OWNER_ID) {
+      return { ok: false };
+    }
+
+    const dataEnvio = data.dataEnvio?.trim()
+      ? new Date(`${data.dataEnvio.trim()}T03:00:00.000Z`).toISOString()
+      : new Date().toISOString();
+
+    try {
+      await env.DB.prepare(
+        `
+          INSERT OR REPLACE INTO tags_pendentes (
+            user_id,
+            nome,
+            data_envio,
+            avisou_7_dias,
+            avisou_10_dias,
+            status
+          ) VALUES (?, ?, ?, 0, 0, 'pendente')
+        `,
+      )
+        .bind(data.userId.trim(), data.nome.trim(), dataEnvio)
+        .run();
+
+      return { ok: true };
+    } catch (error) {
+      console.error("Erro ao adicionar tag no D1:", error);
+      return { ok: false };
+    }
+  });
+
 export const Route = createFileRoute("/dashboard")({
   validateSearch: (search: Record<string, unknown>) => ({
     auth_error:
@@ -151,9 +187,32 @@ function DashboardPage() {
   const { auth_error } = Route.useSearch();
   const router = useRouter();
   const concluirTag = useServerFn(concluirTagPendente);
+  const adicionarTag = useServerFn(adicionarTagPendente);
 
   async function handleConcluir(registroId: string) {
     const resultado = await concluirTag({ data: { registroId } });
+
+    if (resultado?.ok) {
+      await router.invalidate();
+    }
+  }
+
+  async function handleAdicionar(formData: FormData) {
+    const userId = String(formData.get("userId") || "");
+    const nome = String(formData.get("nome") || "");
+    const dataEnvio = String(formData.get("dataEnvio") || "");
+
+    if (!userId.trim() || !nome.trim()) {
+      return;
+    }
+
+    const resultado = await adicionarTag({
+      data: {
+        userId,
+        nome,
+        dataEnvio,
+      },
+    });
 
     if (resultado?.ok) {
       await router.invalidate();
@@ -241,6 +300,51 @@ function DashboardPage() {
             </div>
           )}
         </div>
+
+        {viewer && acessoPermitido ? (
+          <div className="mt-8 rounded-3xl border-glow bg-[oklch(0.12_0.03_250/60%)] p-8 backdrop-blur-xl">
+            <div>
+              <p className="text-sm text-[var(--raven-cyan)]">Adicionar</p>
+              <h2 className="mt-1 font-display text-2xl font-semibold">
+                Novo pendente
+              </h2>
+            </div>
+
+            <form
+              className="mt-6 grid gap-4 md:grid-cols-3"
+              onSubmit={async (event) => {
+                event.preventDefault();
+                await handleAdicionar(new FormData(event.currentTarget));
+                event.currentTarget.reset();
+              }}
+            >
+              <input
+                name="userId"
+                placeholder="ID do membro"
+                className="rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-muted-foreground"
+              />
+              <input
+                name="nome"
+                placeholder="Nome do membro"
+                className="rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-muted-foreground"
+              />
+              <input
+                name="dataEnvio"
+                placeholder="Data (AAAA-MM-DD)"
+                className="rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-muted-foreground"
+              />
+
+              <div className="md:col-span-3">
+                <button
+                  type="submit"
+                  className="inline-flex rounded-xl bg-cyan-300 px-5 py-3 text-sm font-semibold text-black transition-all hover:bg-cyan-200"
+                >
+                  Adicionar pendente
+                </button>
+              </div>
+            </form>
+          </div>
+        ) : null}
 
         <div className="mt-8 rounded-3xl border-glow bg-[oklch(0.12_0.03_250/60%)] p-8 backdrop-blur-xl">
           <div className="flex items-center justify-between">
