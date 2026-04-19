@@ -3,10 +3,11 @@ import logo from "@/assets/raven-logo.png";
 import { Menu, X } from "lucide-react";
 
 const links = [
-  { href: "#funcoes", label: "Funções" },
+  { href: "#funcoes", label: "Funcoes" },
   { href: "#exemplos", label: "Exemplos" },
   { href: "#ia", label: "IA" },
   { href: "#staff", label: "Staff" },
+  { href: "/dashboard", label: "Dashboard" },
 ];
 
 export function Header() {
