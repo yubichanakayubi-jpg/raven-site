@@ -198,17 +198,22 @@ function DashboardPage() {
               Logado como {viewer.global_name || viewer.username}.
             </p>
           ) : (
-            <div className="mt-6 max-w-2xl rounded-2xl border border-[var(--raven-cyan)]/20 bg-[oklch(0.16_0.04_250/60%)] p-6">
-              <p className="text-base text-muted-foreground md:text-lg">
-                Entre com seu Discord para acessar sua dashboard com seguranca.
+            <div className="mt-6 max-w-3xl rounded-2xl border border-cyan-400/30 bg-cyan-400/10 p-6">
+              <p className="text-lg font-semibold text-white">
+                Voce precisa entrar com Discord para acessar esta dashboard.
+              </p>
+              <p className="mt-2 text-sm text-cyan-100/80">
+                Sem login, a lista de tags fica bloqueada.
               </p>
 
-              <a
-                href="/auth/discord"
-                className="mt-5 inline-flex rounded-xl bg-[var(--gradient-cyan)] px-5 py-3 text-sm font-semibold text-[var(--raven-black)] transition-all hover:shadow-[var(--glow-cyan-strong)]"
-              >
-                Entrar com Discord
-              </a>
+              <div className="mt-6">
+                <a
+                  href="/auth/discord"
+                  className="inline-flex min-w-[220px] items-center justify-center rounded-xl bg-cyan-400 px-6 py-4 text-base font-bold text-black transition-all hover:bg-cyan-300"
+                >
+                  Entrar com Discord
+                </a>
+              </div>
             </div>
           )}
         </div>
