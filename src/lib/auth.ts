@@ -92,7 +92,6 @@ export function buildDiscordAuthorizeUrl(request: Request, state: string) {
     redirect_uri: buildDiscordRedirectUri(request),
     scope: "identify",
     state,
-    prompt: "consent",
   });
 
   return `https://discord.com/oauth2/authorize?${params.toString()}`;

@@ -101,6 +101,10 @@ const concluirTagPendente = createServerFn({ method: "POST" })
   });
 
 export const Route = createFileRoute("/dashboard")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    auth_error:
+      typeof search.auth_error === "string" ? search.auth_error : undefined,
+  }),
   loader: async () => {
     const viewer = (await getViewer()) as Viewer;
     const pendentes = viewer ? await getTagsPendentes() : [];
@@ -140,6 +144,7 @@ function formatarDataBr(dataIso: string) {
 
 function DashboardPage() {
   const { viewer, pendentes } = Route.useLoaderData();
+  const { auth_error } = Route.useSearch();
   const router = useRouter();
   const concluirTag = useServerFn(concluirTagPendente);
 
@@ -199,6 +204,12 @@ function DashboardPage() {
             </p>
           ) : (
             <div className="mt-6 max-w-3xl rounded-2xl border border-cyan-400/30 bg-cyan-400/10 p-6">
+              {auth_error ? (
+                <div className="mb-4 rounded-xl border border-red-400/30 bg-red-500/10 p-4 text-sm text-red-200">
+                  {auth_error}
+                </div>
+              ) : null}
+
               <p className="text-lg font-semibold text-white">
                 Voce precisa entrar com Discord para acessar esta dashboard.
               </p>

@@ -16,12 +16,23 @@ export const Route = createFileRoute("/auth/discord/callback")({
         const url = new URL(request.url);
         const code = url.searchParams.get("code");
         const state = url.searchParams.get("state");
+        const oauthError = url.searchParams.get("error");
+        const oauthErrorDescription = url.searchParams.get("error_description");
         const storedState = getOAuthStateFromRequest(request);
         const headers = new Headers();
         headers.set("Location", "/dashboard");
         headers.append("Set-Cookie", clearOAuthStateCookie());
 
+        if (oauthError) {
+          headers.set(
+            "Location",
+            `/dashboard?auth_error=${encodeURIComponent(oauthErrorDescription || oauthError)}`,
+          );
+          return new Response(null, { status: 302, headers });
+        }
+
         if (!code || !state || !storedState || state != storedState) {
+          headers.set("Location", "/dashboard?auth_error=Falha%20na%20validacao%20do%20login");
           return new Response(null, { status: 302, headers });
         }
 
@@ -40,11 +51,17 @@ export const Route = createFileRoute("/auth/discord/callback")({
         });
 
         if (!tokenResponse.ok) {
+          const erroTexto = await tokenResponse.text();
+          headers.set(
+            "Location",
+            `/dashboard?auth_error=${encodeURIComponent(`Falha ao trocar o codigo: ${erroTexto}`)}`,
+          );
           return new Response(null, { status: 302, headers });
         }
 
         const tokenData = (await tokenResponse.json()) as { access_token?: string };
         if (!tokenData.access_token) {
+          headers.set("Location", "/dashboard?auth_error=Discord%20nao%20retornou%20token");
           return new Response(null, { status: 302, headers });
         }
 
@@ -55,6 +72,11 @@ export const Route = createFileRoute("/auth/discord/callback")({
         });
 
         if (!userResponse.ok) {
+          const erroTexto = await userResponse.text();
+          headers.set(
+            "Location",
+            `/dashboard?auth_error=${encodeURIComponent(`Falha ao buscar usuario: ${erroTexto}`)}`,
+          );
           return new Response(null, { status: 302, headers });
         }
 
