@@ -193,22 +193,24 @@ function DashboardPage() {
             Dashboard <span className="text-[var(--raven-cyan)]">Raven</span>
           </h1>
 
-          <p className="mt-4 max-w-2xl text-base text-muted-foreground md:text-lg">
-            {viewer
-              ? `Logado como ${viewer.global_name || viewer.username}.`
-              : "Entre com seu Discord para acessar sua dashboard."}
-          </p>
+          {viewer ? (
+            <p className="mt-4 max-w-2xl text-base text-muted-foreground md:text-lg">
+              Logado como {viewer.global_name || viewer.username}.
+            </p>
+          ) : (
+            <div className="mt-6 max-w-2xl rounded-2xl border border-[var(--raven-cyan)]/20 bg-[oklch(0.16_0.04_250/60%)] p-6">
+              <p className="text-base text-muted-foreground md:text-lg">
+                Entre com seu Discord para acessar sua dashboard com seguranca.
+              </p>
 
-          {!viewer ? (
-            <div className="mt-6">
               <a
                 href="/auth/discord"
-                className="inline-flex rounded-xl bg-[var(--gradient-cyan)] px-5 py-3 text-sm font-semibold text-[var(--raven-black)] transition-all hover:shadow-[var(--glow-cyan-strong)]"
+                className="mt-5 inline-flex rounded-xl bg-[var(--gradient-cyan)] px-5 py-3 text-sm font-semibold text-[var(--raven-black)] transition-all hover:shadow-[var(--glow-cyan-strong)]"
               >
                 Entrar com Discord
               </a>
             </div>
-          ) : null}
+          )}
         </div>
 
         <div className="mt-8 rounded-3xl border-glow bg-[oklch(0.12_0.03_250/60%)] p-8 backdrop-blur-xl">
@@ -228,7 +230,7 @@ function DashboardPage() {
           <div className="mt-6 rounded-2xl border border-white/10 bg-black/20 p-6">
             {!viewer ? (
               <p className="text-sm text-muted-foreground">
-                Faça login com Discord para visualizar e editar a lista.
+                Faca login com Discord para visualizar e editar a lista.
               </p>
             ) : pendentes.length === 0 ? (
               <p className="text-sm text-muted-foreground">
