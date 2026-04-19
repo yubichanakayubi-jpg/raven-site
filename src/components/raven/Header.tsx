@@ -35,7 +35,7 @@ export function Header() {
         <div className="flex items-center gap-2">
           <a
             href="#cta"
-            className="hidden rounded-xl bg-[var(--gradient-cyan)] px-4 py-2 text-sm font-semibold text-[var(--raven-black)] transition-all hover:shadow-[var(--glow-cyan-strong)] md:inline-flex"
+            className="hidden rounded-xl border border-cyan-300/40 bg-cyan-300 px-4 py-2 text-sm font-semibold text-black shadow-[0_0_24px_rgba(34,211,238,0.25)] transition-all hover:bg-cyan-200 hover:shadow-[0_0_28px_rgba(34,211,238,0.4)] md:inline-flex"
           >
             Adicionar ao Discord
           </a>
@@ -64,7 +64,7 @@ export function Header() {
             <a
               href="#cta"
               onClick={() => setOpen(false)}
-              className="mt-2 rounded-xl bg-[var(--gradient-cyan)] px-4 py-2 text-center text-sm font-semibold text-[var(--raven-black)]"
+              className="mt-2 rounded-xl border border-cyan-300/40 bg-cyan-300 px-4 py-2 text-center text-sm font-semibold text-black shadow-[0_0_24px_rgba(34,211,238,0.25)]"
             >
               Adicionar ao Discord
             </a>
