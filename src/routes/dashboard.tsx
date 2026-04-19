@@ -2,6 +2,7 @@ import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { createServerFn, useServerFn } from "@tanstack/react-start";
 import { getRequestHeader } from "@tanstack/react-start/server";
 import { env } from "cloudflare:workers";
+import { useState } from "react";
 import logo from "@/assets/raven-logo.png";
 import { getDiscordSessionFromRequest } from "@/lib/auth";
 
@@ -188,6 +189,7 @@ function DashboardPage() {
   const router = useRouter();
   const concluirTag = useServerFn(concluirTagPendente);
   const adicionarTag = useServerFn(adicionarTagPendente);
+  const [mensagemFormulario, setMensagemFormulario] = useState<string>("");
 
   async function handleConcluir(registroId: string) {
     const resultado = await concluirTag({ data: { registroId } });
@@ -203,6 +205,7 @@ function DashboardPage() {
     const dataEnvio = String(formData.get("dataEnvio") || "");
 
     if (!userId.trim() || !nome.trim()) {
+      setMensagemFormulario("Preencha o ID e o nome do membro.");
       return;
     }
 
@@ -215,7 +218,10 @@ function DashboardPage() {
     });
 
     if (resultado?.ok) {
+      setMensagemFormulario("Pendente adicionado com sucesso.");
       await router.invalidate();
+    } else {
+      setMensagemFormulario("Nao consegui adicionar esse pendente. Confere o ID, o nome e a data.");
     }
   }
 
@@ -314,6 +320,7 @@ function DashboardPage() {
               className="mt-6 grid gap-4 md:grid-cols-3"
               onSubmit={async (event) => {
                 event.preventDefault();
+                setMensagemFormulario("");
                 await handleAdicionar(new FormData(event.currentTarget));
                 event.currentTarget.reset();
               }}
@@ -342,6 +349,12 @@ function DashboardPage() {
                   Adicionar pendente
                 </button>
               </div>
+
+              {mensagemFormulario ? (
+                <div className="md:col-span-3 rounded-xl border border-white/10 bg-white/5 p-4 text-sm text-muted-foreground">
+                  {mensagemFormulario}
+                </div>
+              ) : null}
             </form>
           </div>
         ) : null}
